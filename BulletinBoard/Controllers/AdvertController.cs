@@ -47,7 +47,7 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateAdvert(Guid advertId, string text, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
+        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, string text, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
         {
             var advert = await _advertService.GetAdvertById(advertId);
 
@@ -55,7 +55,7 @@ namespace BulletinBoard.Controllers
             {
                 return NotFound();
             }
-            await _advertService.UpdateAdvert(advertId, text, newImages, imagesToDelete);
+            await _advertService.UpdateAdvert(advertId, userId, text, newImages, imagesToDelete);
             return NoContent();
         }
     }

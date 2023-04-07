@@ -87,6 +87,10 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
+            if (advert.UserId != userId)
+            {
+                throw new Exception("У вас нет прав удалять данное объявление");
+            }
             foreach (var image in advert.AdvertImages)
             {
                 _dbContext.AdvertImages.Remove(image);
@@ -96,7 +100,7 @@ namespace Services
             await _dbContext.SaveChangesAsync();
         }
 
-        public async Task UpdateAdvert(Guid advertId, string text, List<IFormFile> newImages, List<Guid> imagesToDelete)
+        public async Task UpdateAdvert(Guid advertId, Guid userId, string text, List<IFormFile> newImages, List<Guid> imagesToDelete)
         {
             var advert = await _dbContext.Adverts.Include(a => a.AdvertImages).FirstOrDefaultAsync(a => a.Id == advertId);
 
@@ -104,7 +108,10 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
-
+            if (advert.UserId != userId) 
+            {
+                throw new Exception("У вас нет прав изменять данное объявление");
+            }
             advert.Text = text;
             advert.ExpirationDate = DateTime.Now.AddDays(_config.GetValue<int>("Appsettings:ExpirationDate"));
 
