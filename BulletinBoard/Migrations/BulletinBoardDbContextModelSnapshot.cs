@@ -76,7 +76,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasIndex("AdvertId");
 
-                    b.ToTable("AdvertImage");
+                    b.ToTable("AdvertImages");
                 });
 
             modelBuilder.Entity("Models.User", b =>

@@ -12,7 +12,7 @@ using Models;
 namespace BulletinBoard.Migrations
 {
     [DbContext(typeof(BulletinBoardDbContext))]
-    [Migration("20230407122237_InitialCreate")]
+    [Migration("20230408073632_InitialCreate")]
     partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -78,7 +78,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasIndex("AdvertId");
 
-                    b.ToTable("AdvertImage");
+                    b.ToTable("AdvertImages");
                 });
 
             modelBuilder.Entity("Models.User", b =>

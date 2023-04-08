@@ -45,7 +45,7 @@ namespace BulletinBoard.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "AdvertImage",
+                name: "AdvertImages",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -56,9 +56,9 @@ namespace BulletinBoard.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_AdvertImage", x => x.Id);
+                    table.PrimaryKey("PK_AdvertImages", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_AdvertImage_Adverts_AdvertId",
+                        name: "FK_AdvertImages_Adverts_AdvertId",
                         column: x => x.AdvertId,
                         principalTable: "Adverts",
                         principalColumn: "Id",
@@ -66,8 +66,8 @@ namespace BulletinBoard.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_AdvertImage_AdvertId",
-                table: "AdvertImage",
+                name: "IX_AdvertImages_AdvertId",
+                table: "AdvertImages",
                 column: "AdvertId");
 
             migrationBuilder.CreateIndex(
@@ -79,7 +79,7 @@ namespace BulletinBoard.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "AdvertImage");
+                name: "AdvertImages");
 
             migrationBuilder.DropTable(
                 name: "Adverts");

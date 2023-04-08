@@ -81,7 +81,10 @@ namespace Services
         }
         public async Task DeleteAdvert(Guid advertId, Guid userId)
         {
-            var advert = await _dbContext.Adverts.Include(a => a.User).SingleOrDefaultAsync(a => a.Id == advertId);
+            var advert = await _dbContext.Adverts
+            .Include(a => a.User)
+            .Include(a => a.AdvertImages)
+            .SingleOrDefaultAsync(a => a.Id == advertId);
 
             if (advert == null)
             {
@@ -99,7 +102,6 @@ namespace Services
             _dbContext.Adverts.Remove(advert);
             await _dbContext.SaveChangesAsync();
         }
-
         public async Task UpdateAdvert(Guid advertId, Guid userId, string text, List<IFormFile> newImages, List<Guid> imagesToDelete)
         {
             var advert = await _dbContext.Adverts.Include(a => a.AdvertImages).FirstOrDefaultAsync(a => a.Id == advertId);
