@@ -3,7 +3,7 @@ using Models;
 
 namespace Services
 {
-    public class FakeDataGenerator
+    public static class FakeDataGenerator
     {
         public static Faker<User> CreateFakeUser()
         {

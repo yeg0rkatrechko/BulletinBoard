@@ -10,36 +10,33 @@ namespace BulletinBoard.Controllers
     public class AdvertController : ControllerBase
     {
         private readonly AdvertService _advertService;
-        private readonly IImageService _imageService;
-        private readonly IConfiguration _configuration;
-        public AdvertController(AdvertService bulletinBoardService, IImageService imageService, IConfiguration configuration)
+        public AdvertController(AdvertService advertService)
         {
-            _advertService = bulletinBoardService;
-            _imageService = imageService;
-            _configuration = configuration; 
+            _advertService = advertService;
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm]List<IFormFile> images)
+        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm]List<IFormFile> images, bool isDraft)
         {
-            AdvertDto advertDto = new AdvertDto();
-            advertDto.UserId = userId;
-            advertDto.Text = text;
-            advertDto.Rating = _configuration.GetValue<int>("AppSettings:DefaultAdvertRating");
-            advertDto.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("AppSettings:ExpirationDays"));
-            await _advertService.CreateAdvert(advertDto, images);
+            await _advertService.CreateAdvert(userId, text, images, isDraft);
             return NoContent();
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetAdvertById(Guid id)
+        [HttpGet("{advertId}")]
+        public async Task<IActionResult> GetAdvertById(Guid advertId, Guid userId)
         {
-            await _advertService.GetAdvertById(id);
-            return Ok();
+            var response = await _advertService.GetAdvertById(advertId, userId);
+            return Ok(response);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAllPublishedAdverts()
+        {
+            var response = await _advertService.GetAllPublishedAdverts();
+            return Ok(response);
         }
 
         [HttpDelete]
-
         public async Task<IActionResult> DeleteAdvert(Guid advertId, Guid userId)
         {
             await _advertService.DeleteAdvert(advertId, userId);
@@ -47,15 +44,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, string text, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
+        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, string? text, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
         {
-            var advert = await _advertService.GetAdvertById(advertId);
+            await _advertService.UpdateAdvert(advertId, userId, text, isDraft, newImages, imagesToDelete);
+            return NoContent();
+        }
 
-            if (advert == null)
-            {
-                return NotFound();
-            }
-            await _advertService.UpdateAdvert(advertId, userId, text, newImages, imagesToDelete);
+        [HttpPut("react")]
+        public async Task<IActionResult> ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
+        {
+            await _advertService.ReactToAdvert(userId, advertId, reaction);
             return NoContent();
         }
     }

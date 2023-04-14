@@ -15,9 +15,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUser(UserDto userDto)
+        public async Task<IActionResult> CreateUser(string name, bool isAdmin)
         {
-            await _userService.CreateUser(userDto);
+            await _userService.CreateUser(name, isAdmin);
+            return NoContent();
+        }
+
+        [HttpPut]
+        public async Task<IActionResult> ChangeUserPrivilege(Guid adminId, Guid userToChangeId, bool isAdmin)
+        {
+            _userService.ChangeUserPrivilege(adminId, userToChangeId, isAdmin);
             return NoContent();
         }
 

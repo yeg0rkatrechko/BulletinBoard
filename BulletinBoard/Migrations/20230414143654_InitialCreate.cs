@@ -27,11 +27,11 @@ namespace BulletinBoard.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
-                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Text = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Rating = table.Column<int>(type: "int", nullable: false),
+                    IsDraft = table.Column<bool>(type: "bit", nullable: false),
                     TimeCreated = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    ExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: false)
+                    ExpirationDate = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -65,9 +65,34 @@ namespace BulletinBoard.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "AdvertReactions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    UserId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    AdvertId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Reaction = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AdvertReactions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AdvertReactions_Adverts_AdvertId",
+                        column: x => x.AdvertId,
+                        principalTable: "Adverts",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AdvertImages_AdvertId",
                 table: "AdvertImages",
+                column: "AdvertId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AdvertReactions_AdvertId",
+                table: "AdvertReactions",
                 column: "AdvertId");
 
             migrationBuilder.CreateIndex(
@@ -80,6 +105,9 @@ namespace BulletinBoard.Migrations
         {
             migrationBuilder.DropTable(
                 name: "AdvertImages");
+
+            migrationBuilder.DropTable(
+                name: "AdvertReactions");
 
             migrationBuilder.DropTable(
                 name: "Adverts");
