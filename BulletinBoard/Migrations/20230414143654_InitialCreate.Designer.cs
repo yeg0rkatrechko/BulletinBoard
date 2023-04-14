@@ -12,7 +12,7 @@ using Models;
 namespace BulletinBoard.Migrations
 {
     [DbContext(typeof(BulletinBoardDbContext))]
-    [Migration("20230408073632_InitialCreate")]
+    [Migration("20230414143654_InitialCreate")]
     partial class InitialCreate
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,8 +33,8 @@ namespace BulletinBoard.Migrations
                     b.Property<DateTime>("ExpirationDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<int>("Rating")
-                        .HasColumnType("int");
+                    b.Property<bool>("IsDraft")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Text")
                         .IsRequired()
@@ -81,6 +81,28 @@ namespace BulletinBoard.Migrations
                     b.ToTable("AdvertImages");
                 });
 
+            modelBuilder.Entity("Models.AdvertReaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("AdvertId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Reaction")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdvertId");
+
+                    b.ToTable("AdvertReactions");
+                });
+
             modelBuilder.Entity("Models.User", b =>
                 {
                     b.Property<Guid>("Id")
@@ -121,9 +143,20 @@ namespace BulletinBoard.Migrations
                     b.Navigation("Advert");
                 });
 
+            modelBuilder.Entity("Models.AdvertReaction", b =>
+                {
+                    b.HasOne("Models.Advert", null)
+                        .WithMany("AdvertReaction")
+                        .HasForeignKey("AdvertId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Models.Advert", b =>
                 {
                     b.Navigation("AdvertImages");
+
+                    b.Navigation("AdvertReaction");
                 });
 
             modelBuilder.Entity("Models.User", b =>
