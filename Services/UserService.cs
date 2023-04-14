@@ -8,27 +8,31 @@ namespace Services
     public class UserService
     {
         private readonly BulletinBoardDbContext _dbContext;
-        private readonly IMapper _mapper;
-        private readonly IConfiguration _config;
-        public UserService(IMapper mapper, BulletinBoardDbContext dbContext, IConfiguration config)
+        public UserService(BulletinBoardDbContext dbContext)
         {
-            _mapper = mapper;
             _dbContext = dbContext;
-            _config = config;
         }
-        public async Task<Guid> CreateUser(UserDto userDto)
+        public async Task CreateUser(string name, bool isAdmin)
         {
             var user = new User
             {
                 Id = Guid.NewGuid(),
-                Name = userDto.Name,
-                Admin = userDto.Admin
+                Name = name,
+                Admin = isAdmin
             };
 
             _dbContext.Users.Add(user);
             await _dbContext.SaveChangesAsync();
-
-            return user.Id;
+        }
+        public async Task ChangeUserPrivilege(Guid adminId, Guid userToChangeId, bool isAdmin)
+        {
+            var admin = await _dbContext.Users.SingleOrDefaultAsync(a => a.Id == adminId);
+            var userToChange = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userToChangeId);
+            if (admin == null || userToChange == null)
+            {
+                throw new Exception("Проверьте введенные ID");
+            }
+            userToChange.Admin = isAdmin;
         }
     }
 }

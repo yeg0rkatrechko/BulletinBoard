@@ -12,17 +12,16 @@ namespace Models
 {
     public class AdvertDto
     {
-        public Guid Id { get; } = Guid.NewGuid();
-
-        public Guid UserId { get; set; }
-
+        public string UserName { get; set; }
         public string Text { get; set; }
 
-        public int Rating { get; set; }
-
-        public DateTime TimeCreated { get; } = DateTime.UtcNow;
+        public DateTime TimeCreated { get; set; }
 
         public DateTime ExpirationDate { get; set; }
+
+        public virtual ICollection<AdvertImage> AdvertImages { get; set; }
+
+        public virtual ICollection<AdvertReaction> Reactions { get; set; }
 
     }
 }
