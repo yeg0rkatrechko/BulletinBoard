@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Models;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Data.SqlClient.Server;
 
 namespace Services
 {
@@ -10,39 +11,38 @@ namespace Services
     {
         private readonly BulletinBoardDbContext _dbContext;
         private readonly IMapper _mapper;
-        private readonly IConfiguration _config;
+        private readonly IConfiguration _configuration;
         private readonly IImageService _imageService;
-        public AdvertService(IMapper mapper, BulletinBoardDbContext dbContext, IConfiguration config, IImageService imageService)
+        public AdvertService(IMapper mapper, BulletinBoardDbContext dbContext, IConfiguration configuration, IImageService imageService)
         {
             _mapper = mapper;
             _dbContext = dbContext;
-            _config = config;
+            _configuration = configuration;
             _imageService = imageService;
         }
-
-        public async Task<Guid> CreateAdvert(AdvertDto advertDto, List<IFormFile> images)
+        public async Task<Guid> CreateAdvert(Guid userId, string text, List<IFormFile> images, bool isDraft)
         {
-            var user = await _dbContext.Users.FindAsync(advertDto.UserId);
+            var user = await _dbContext.Users.FindAsync(userId);
 
             int numAdverts = await _dbContext.Adverts.CountAsync(a => a.User.Id == user.Id);
 
-            int maxAdvertsPerUser = _config.GetValue<int>("AppSettings:MaxAdvertsPerUser");
+            int maxAdvertsPerUser = _configuration.GetValue<int>("AppSettings:MaxAdvertsPerUser");
 
             if (numAdverts >= maxAdvertsPerUser)
             {
                 throw new Exception($"Максимальное количество объявлений, которые вы можете выложить: {maxAdvertsPerUser}");
             }
 
-            var advert = new Advert
+            var newAdvert = new Advert
             {
                 Id = Guid.NewGuid(),
                 User = user,
-                Text = advertDto.Text,
-                Rating = advertDto.Rating,
+                Text = text,
+                IsDraft = isDraft,
                 TimeCreated = DateTime.UtcNow,
-                ExpirationDate = advertDto.ExpirationDate,
+                ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("AppSettings:ExpirationDays")),
                 AdvertImages = new List<AdvertImage>()
-            };           
+            };
 
             foreach (var image in images)
             {
@@ -52,25 +52,24 @@ namespace Services
                     FileName = image.FileName,
                     FileType = image.ContentType,
                     FilePath = filePath,
-                    Advert = advert
+                    Advert = newAdvert
                 };
-                advert.AdvertImages.Add(advertImage);
+                newAdvert.AdvertImages.Add(advertImage);
             }
 
-            _dbContext.Adverts.Add(advert);
+            _dbContext.Adverts.Add(newAdvert);
             await _dbContext.SaveChangesAsync();
 
-            return advert.Id;
+            return newAdvert.Id;
         }
-
-        public async Task<AdvertDto> GetAdvertById(Guid id)
+        public async Task<AdvertDto> GetAdvertById(Guid advertId, Guid userId)
         {
             var advert = await _dbContext.Adverts
-                .Include(a => a.User)
                 .Include(a => a.AdvertImages)
-                .FirstOrDefaultAsync(a => a.Id == id);
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.Id == advertId);
 
-            if (advert == null)
+            if (advert == null || (advert.IsDraft && advert.User.Id != userId))
             {
                 throw new Exception("Объявление не найдено");
             }
@@ -79,6 +78,15 @@ namespace Services
 
             return advertDto;
         }
+        public async Task<IList<AdvertDto>> GetAllPublishedAdverts()
+        {
+            var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
+                .Include(a => a.AdvertImages)
+                .Include(a => a.User)
+                .ToListAsync();
+            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+            return advertsDto;
+        }
         public async Task DeleteAdvert(Guid advertId, Guid userId)
         {
             var advert = await _dbContext.Adverts
@@ -86,23 +94,33 @@ namespace Services
             .Include(a => a.AdvertImages)
             .SingleOrDefaultAsync(a => a.Id == advertId);
 
-            if (advert == null)
+            var user = await _dbContext.Users
+            .SingleOrDefaultAsync(u => u.Id == userId);
+
+            if (advert == null || (advert.IsDraft && advert.User.Id != userId))
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (advert.UserId != userId)
+            if (user == null)
+            {
+                throw new Exception("Пользователь не найден");
+            }
+            if (!user.Admin && advert.User.Id != userId)
             {
                 throw new Exception("У вас нет прав удалять данное объявление");
             }
-            foreach (var image in advert.AdvertImages)
+            if(advert.AdvertImages != null) 
             {
-                _dbContext.AdvertImages.Remove(image);
-                _imageService.DeleteImage(image.FilePath);
+                foreach (var image in advert.AdvertImages)
+                {
+                    _dbContext.AdvertImages.Remove(image);
+                    _imageService.DeleteImage(image.FilePath);
+                }
             }
             _dbContext.Adverts.Remove(advert);
             await _dbContext.SaveChangesAsync();
         }
-        public async Task UpdateAdvert(Guid advertId, Guid userId, string text, List<IFormFile> newImages, List<Guid> imagesToDelete)
+        public async Task UpdateAdvert(Guid advertId, Guid userId, string text, bool isDraft, List<IFormFile> newImages, List<Guid> imagesToDelete)
         {
             var advert = await _dbContext.Adverts.Include(a => a.AdvertImages).FirstOrDefaultAsync(a => a.Id == advertId);
 
@@ -110,20 +128,31 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (advert.UserId != userId) 
+            if (advert.User.Id != userId) 
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
-            advert.Text = text;
-            advert.ExpirationDate = DateTime.Now.AddDays(_config.GetValue<int>("Appsettings:ExpirationDate"));
-
-            foreach (var imageToDeleteId in imagesToDelete)
+            if (text != null) 
             {
-                var advertImage = advert.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId);
-                if (advertImage != null)
+                advert.Text = text;
+            }            
+            if (advert.IsDraft)
+            { 
+                advert.IsDraft = isDraft; 
+            }
+            
+            advert.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("Appsettings:ExpirationDate"));
+
+            if(advert.AdvertImages != null)
+            {
+                foreach (var imageToDeleteId in imagesToDelete)
                 {
-                    _dbContext.AdvertImages.Remove(advertImage);
-                    _imageService.DeleteImage(advertImage.FilePath);
+                    var advertImage = advert.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId);
+                    if (advertImage != null)
+                    {
+                        _dbContext.AdvertImages.Remove(advertImage);
+                        _imageService.DeleteImage(advertImage.FilePath);
+                    }
                 }
             }
 
@@ -142,6 +171,24 @@ namespace Services
 
             await _dbContext.SaveChangesAsync();
         }
-
+        public async Task ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
+        {
+            var existingReaction = await _dbContext.AdvertReactions.FirstOrDefaultAsync(r => r.UserId == userId && r.AdvertId == advertId);
+            if (existingReaction != null)
+            {
+                existingReaction.Reaction = reaction;
+            }
+            else
+            {
+                var newReaction = new AdvertReaction
+                {
+                    UserId = userId,
+                    AdvertId = advertId,
+                    Reaction = reaction
+                };
+                _dbContext.AdvertReactions.Add(newReaction);
+            }
+            await _dbContext.SaveChangesAsync();
+        }
     }
 }

@@ -12,9 +12,9 @@ namespace Models
         }
 
         public DbSet<Advert> Adverts { get; set; }
-
         public DbSet<User> Users { get; set; }
         public DbSet<AdvertImage> AdvertImages { get; set; }
+        public DbSet<AdvertReaction> AdvertReactions { get; set; }
         public BulletinBoardDbContext() => Database.EnsureCreated();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
