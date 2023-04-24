@@ -4,6 +4,8 @@ using Microsoft.Extensions.Configuration;
 using Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient.Server;
+using System.Linq;
+using System.Runtime.Serialization;
 
 namespace Services
 {
@@ -81,10 +83,43 @@ namespace Services
         public async Task<IList<AdvertDto>> GetAllPublishedAdverts()
         {
             var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
-                .Include(a => a.AdvertImages)
                 .Include(a => a.User)
+                .Include(a => a.AdvertImages)
+                .Include(a => a.AdvertReaction)
                 .ToListAsync();
             var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+            return advertsDto;
+        }
+        public async Task<List<AdvertDto>> SearchAdverts(string searchText, AdvertSortOrder sortOrder)
+        {
+
+            var adverts = await _dbContext.Adverts
+                .Include(a => a.User)
+                .Include(a => a.AdvertImages)
+                .Include(a => a.AdvertReaction)
+                .Where(a => a.Text.Contains(searchText) && !a.IsDraft)
+                .ToListAsync();
+
+            switch (sortOrder)
+            {
+                case AdvertSortOrder.CreationDateAsc:
+                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.CreationDateDesc:
+                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.RatingAsc:
+                    adverts = adverts.OrderBy(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                case AdvertSortOrder.RatingDesc:
+                    adverts = adverts.OrderByDescending(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                default:
+                    break;
+            }
+
+            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+
             return advertsDto;
         }
         public async Task DeleteAdvert(Guid advertId, Guid userId)
@@ -109,7 +144,7 @@ namespace Services
             {
                 throw new Exception("У вас нет прав удалять данное объявление");
             }
-            if(advert.AdvertImages != null) 
+            if (advert.AdvertImages != null)
             {
                 foreach (var image in advert.AdvertImages)
                 {
@@ -128,22 +163,22 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (advert.User.Id != userId) 
+            if (advert.User.Id != userId)
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
-            if (text != null) 
+            if (text != null)
             {
                 advert.Text = text;
-            }            
-            if (advert.IsDraft)
-            { 
-                advert.IsDraft = isDraft; 
             }
-            
+            if (advert.IsDraft)
+            {
+                advert.IsDraft = isDraft;
+            }
+
             advert.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("Appsettings:ExpirationDate"));
 
-            if(advert.AdvertImages != null)
+            if (advert.AdvertImages != null)
             {
                 foreach (var imageToDeleteId in imagesToDelete)
                 {
@@ -189,6 +224,13 @@ namespace Services
                 _dbContext.AdvertReactions.Add(newReaction);
             }
             await _dbContext.SaveChangesAsync();
+        }
+        public enum AdvertSortOrder
+        {
+            CreationDateAsc,
+            CreationDateDesc,
+            RatingAsc,
+            RatingDesc
         }
     }
 }

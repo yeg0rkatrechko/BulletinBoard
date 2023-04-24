@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Configuration;
 using Models;
 using Services;
+using static Services.AdvertService;
 
 namespace BulletinBoard.Controllers
 {
@@ -16,7 +17,7 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm]List<IFormFile> images, bool isDraft)
+        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm] List<IFormFile> images, bool isDraft)
         {
             await _advertService.CreateAdvert(userId, text, images, isDraft);
             return NoContent();
@@ -29,10 +30,17 @@ namespace BulletinBoard.Controllers
             return Ok(response);
         }
 
-        [HttpGet]
+        [HttpGet("adverts")]
         public async Task<IActionResult> GetAllPublishedAdverts()
         {
             var response = await _advertService.GetAllPublishedAdverts();
+            return Ok(response);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> SearchAdverts(string searchText, AdvertSortOrder sortOrder)
+        {
+            var response = await _advertService.SearchAdverts(searchText, sortOrder);
             return Ok(response);
         }
 
