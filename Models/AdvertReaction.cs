@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Models
+﻿namespace Models
 {
     public class AdvertReaction
     {
@@ -15,7 +9,7 @@ namespace Models
     }
     public enum Reaction
     {
-         Like = 1,
-         Dislike = -1
+        Like = 1,
+        Dislike = -1
     }
 }

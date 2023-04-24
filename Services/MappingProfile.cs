@@ -5,7 +5,7 @@ namespace Services
 {
     public class MappingProfile : Profile
     {
-        public MappingProfile() 
+        public MappingProfile()
         {
             CreateMap<Advert, AdvertDto>()
             .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.Name))

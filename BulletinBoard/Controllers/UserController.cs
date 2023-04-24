@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Models;
 using Services;
 
 namespace BulletinBoard.Controllers

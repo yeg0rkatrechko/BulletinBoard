@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Models;
 using Services;
 
@@ -16,7 +15,7 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm]List<IFormFile> images, bool isDraft)
+        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm] List<IFormFile> images, bool isDraft)
         {
             await _advertService.CreateAdvert(userId, text, images, isDraft);
             return NoContent();

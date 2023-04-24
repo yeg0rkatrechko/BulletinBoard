@@ -1,9 +1,8 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Models;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Data.SqlClient.Server;
 
 namespace Services
 {
@@ -109,7 +108,7 @@ namespace Services
             {
                 throw new Exception("У вас нет прав удалять данное объявление");
             }
-            if(advert.AdvertImages != null) 
+            if (advert.AdvertImages != null)
             {
                 foreach (var image in advert.AdvertImages)
                 {
@@ -128,22 +127,22 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (advert.User.Id != userId) 
+            if (advert.User.Id != userId)
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
-            if (text != null) 
+            if (text != null)
             {
                 advert.Text = text;
-            }            
-            if (advert.IsDraft)
-            { 
-                advert.IsDraft = isDraft; 
             }
-            
+            if (advert.IsDraft)
+            {
+                advert.IsDraft = isDraft;
+            }
+
             advert.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("Appsettings:ExpirationDate"));
 
-            if(advert.AdvertImages != null)
+            if (advert.AdvertImages != null)
             {
                 foreach (var imageToDeleteId in imagesToDelete)
                 {
