@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.SqlClient.Server;
 using System.Linq;
 using System.Runtime.Serialization;
+using Microsoft.Data.SqlClient;
 
 namespace Services
 {
@@ -80,13 +81,32 @@ namespace Services
 
             return advertDto;
         }
-        public async Task<IList<AdvertDto>> GetAllPublishedAdverts()
+        public async Task<IList<AdvertDto>> GetAllPublishedAdverts(AdvertSortOrder sortOrder)
         {
             var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
                 .Include(a => a.User)
                 .Include(a => a.AdvertImages)
                 .Include(a => a.AdvertReaction)
                 .ToListAsync();
+
+            switch (sortOrder)
+            {
+                case AdvertSortOrder.CreationDateAsc:
+                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.CreationDateDesc:
+                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.RatingAsc:
+                    adverts = adverts.OrderBy(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                case AdvertSortOrder.RatingDesc:
+                    adverts = adverts.OrderByDescending(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                default:
+                    break;
+            }
+
             var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
             return advertsDto;
         }
