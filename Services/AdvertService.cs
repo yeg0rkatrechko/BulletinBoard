@@ -49,7 +49,7 @@ namespace Services
 
             foreach (var image in images)
             {
-                var filePath = _imageService.UploadImage(image);
+                var filePath = await _imageService.UploadImage(image);
                 var advertImage = new AdvertImage
                 {
                     FileName = image.FileName,
@@ -213,7 +213,7 @@ namespace Services
 
             foreach (var newImage in newImages)
             {
-                var filePath = _imageService.UploadImage(newImage);
+                var filePath = await _imageService.UploadImage(newImage);
                 var advertImage = new AdvertImage
                 {
                     FileName = newImage.FileName,
