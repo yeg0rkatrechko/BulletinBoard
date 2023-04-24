@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Models;
+using Microsoft.AspNetCore.Http;
 
 namespace Services
 {
@@ -108,13 +109,10 @@ namespace Services
             {
                 throw new Exception("У вас нет прав удалять данное объявление");
             }
-            if (advert.AdvertImages != null)
+            foreach (var image in advert.AdvertImages)
             {
-                foreach (var image in advert.AdvertImages)
-                {
-                    _dbContext.AdvertImages.Remove(image);
-                    _imageService.DeleteImage(image.FilePath);
-                }
+                _dbContext.AdvertImages.Remove(image);
+                _imageService.DeleteImage(image.FilePath);
             }
             _dbContext.Adverts.Remove(advert);
             await _dbContext.SaveChangesAsync();
@@ -127,31 +125,20 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (advert.User.Id != userId)
+            if (advert.UserId != userId) 
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
-            if (text != null)
-            {
-                advert.Text = text;
-            }
-            if (advert.IsDraft)
-            {
-                advert.IsDraft = isDraft;
-            }
+            advert.Text = text;
+            advert.ExpirationDate = DateTime.Now.AddDays(_config.GetValue<int>("Appsettings:ExpirationDate"));
 
-            advert.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("Appsettings:ExpirationDate"));
-
-            if (advert.AdvertImages != null)
+            foreach (var imageToDeleteId in imagesToDelete)
             {
-                foreach (var imageToDeleteId in imagesToDelete)
+                var advertImage = advert.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId);
+                if (advertImage != null)
                 {
-                    var advertImage = advert.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId);
-                    if (advertImage != null)
-                    {
-                        _dbContext.AdvertImages.Remove(advertImage);
-                        _imageService.DeleteImage(advertImage.FilePath);
-                    }
+                    _dbContext.AdvertImages.Remove(advertImage);
+                    _imageService.DeleteImage(advertImage.FilePath);
                 }
             }
 
