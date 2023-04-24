@@ -17,7 +17,7 @@ namespace Services
             _imageDirectory = configuration.GetValue<string>("ImageDirectory");
         }
 
-        public string UploadImage(IFormFile file)
+        public async Task<string> UploadImage(IFormFile file)
         {
             if (file == null || file.Length == 0)
             {
@@ -34,7 +34,7 @@ namespace Services
 
             return filePath;
         }
-        public void DeleteImage(string imagePath)
+        public async Task DeleteImage(string imagePath)
         {
             if (File.Exists(imagePath))
             {

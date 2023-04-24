@@ -9,7 +9,7 @@ namespace Services
 {
     public interface IImageService
     {
-        string UploadImage(IFormFile image);
-        void DeleteImage(string imagePath);
+        Task<string> UploadImage(IFormFile image);
+        Task DeleteImage(string imagePath);
     }
 }
