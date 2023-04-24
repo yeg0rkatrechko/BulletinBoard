@@ -31,9 +31,9 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpGet("adverts")]
-        public async Task<IActionResult> GetAllPublishedAdverts()
+        public async Task<IActionResult> GetAllPublishedAdverts(AdvertSortOrder sortOrder)
         {
-            var response = await _advertService.GetAllPublishedAdverts();
+            var response = await _advertService.GetAllPublishedAdverts(sortOrder);
             return Ok(response);
         }
 
