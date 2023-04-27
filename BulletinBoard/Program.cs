@@ -1,25 +1,42 @@
-using Models;
-using Services;
+using BulletinBoard.Common;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
+using Models;
+using Models.Validators;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json.Serialization;
+using Services;
+using Services.Mapping;
+using Services.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers().AddNewtonsoftJson(options =>
-    options.SerializerSettings.Converters.Add(new StringEnumConverter
+var mvcBuilder = builder.Services.AddControllers().AddNewtonsoftJson(options =>
     {
-        CamelCaseText = true
-    })
+        options.SerializerSettings.PreserveReferencesHandling = PreserveReferencesHandling.Objects;
+        options.SerializerSettings.Converters.Add(new StringEnumConverter(new CamelCaseNamingStrategy())
+        );
+    }
 );
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+mvcBuilder.AddFluentValidation(x =>
+{
+    x.RegisterValidatorsFromAssemblyContaining<CreateUserRequestValidator>();
+    x.RegisterValidatorsFromAssemblyContaining<CreateAdvertRequestValidator>();
+});
+
+mvcBuilder.AddMvcOptions(x => x.Filters.Add<ModelStateFilter>());
+
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGenNewtonsoftSupport();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<AdvertService>();
+builder.Services.Configure<AdvertOptions>(builder.Configuration.GetSection(AdvertOptions.Options));
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddDbContext<BulletinBoardDbContext>(

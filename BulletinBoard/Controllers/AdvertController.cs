@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
-using Models;
+﻿using BulletinBoard.ServiceModel;
+using Microsoft.AspNetCore.Mvc;
+using Models.DbModels;
+using Models.Dto;
 using Services;
-using static Services.AdvertService;
 
 namespace BulletinBoard.Controllers
 {
@@ -10,16 +10,16 @@ namespace BulletinBoard.Controllers
     [Route("[controller]")]
     public class AdvertController : ControllerBase
     {
-        private readonly AdvertService _advertService;
-        public AdvertController(AdvertService advertService)
+        private readonly IAdvertService _advertService;
+        public AdvertController(IAdvertService advertService)
         {
             _advertService = advertService;
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, string text, [FromForm] List<IFormFile> images, bool isDraft)
+        public async Task<IActionResult> CreateAdvert(Guid userId, CreateAdvertRequest createAdvertRequest, [FromForm] List<IFormFile> images, bool isDraft)
         {
-            await _advertService.CreateAdvert(userId, text, images, isDraft);
+            await _advertService.CreateAdvert(userId, createAdvertRequest.Text, images, isDraft);
             return NoContent();
         }
 
@@ -31,16 +31,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpGet("adverts")]
-        public async Task<IActionResult> GetAllPublishedAdverts(AdvertSortOrder sortOrder)
+        public async Task<IActionResult> GetAllPublishedAdverts()
         {
-            var response = await _advertService.GetAllPublishedAdverts(sortOrder);
+            var response = await _advertService.GetAllPublishedAdverts();
             return Ok(response);
         }
 
-        [HttpGet]
-        public async Task<IActionResult> SearchAdverts(string searchText, AdvertSortOrder sortOrder)
+        [HttpGet("adverts/search")]
+        public async Task<IActionResult> SearchAdverts(string searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-            var response = await _advertService.SearchAdverts(searchText, sortOrder);
+            var response = await _advertService.SearchAdverts(searchText, sortOrder, startDate, endDate);
             return Ok(response);
         }
 
