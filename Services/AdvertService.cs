@@ -1,35 +1,34 @@
 ﻿using AutoMapper;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Models;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Data.SqlClient.Server;
-using System.Linq;
-using System.Runtime.Serialization;
-using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
+using Models;
+using Models.DbModels;
+using Models.Dto;
+using Services.Options;
 
 namespace Services
 {
-    public class AdvertService
+    public class AdvertService : IAdvertService
     {
         private readonly BulletinBoardDbContext _dbContext;
         private readonly IMapper _mapper;
-        private readonly IConfiguration _configuration;
         private readonly IImageService _imageService;
-        public AdvertService(IMapper mapper, BulletinBoardDbContext dbContext, IConfiguration configuration, IImageService imageService)
+        private readonly AdvertOptions _options;
+        public AdvertService(IMapper mapper, BulletinBoardDbContext dbContext, IOptions<AdvertOptions> options, IImageService imageService)
         {
             _mapper = mapper;
             _dbContext = dbContext;
-            _configuration = configuration;
+            _options = options.Value;
             _imageService = imageService;
         }
         public async Task<Guid> CreateAdvert(Guid userId, string text, List<IFormFile> images, bool isDraft)
         {
             var user = await _dbContext.Users.FindAsync(userId);
 
-            int numAdverts = await _dbContext.Adverts.CountAsync(a => a.User.Id == user.Id);
+            int numAdverts = await _dbContext.Adverts.CountAsync(a => a.UserId == user.Id);
 
-            int maxAdvertsPerUser = _configuration.GetValue<int>("AppSettings:MaxAdvertsPerUser");
+            int maxAdvertsPerUser = _options.MaxAdvertsPerUser;
 
             if (numAdverts >= maxAdvertsPerUser)
             {
@@ -43,7 +42,7 @@ namespace Services
                 Text = text,
                 IsDraft = isDraft,
                 TimeCreated = DateTime.UtcNow,
-                ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("AppSettings:ExpirationDays")),
+                ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate),
                 AdvertImages = new List<AdvertImage>()
             };
 
@@ -81,7 +80,7 @@ namespace Services
 
             return advertDto;
         }
-        public async Task<IList<AdvertDto>> GetAllPublishedAdverts(AdvertSortOrder sortOrder)
+        public async Task<IList<AdvertDto>> GetAllPublishedAdverts()
         {
             var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
                 .Include(a => a.User)
@@ -89,28 +88,11 @@ namespace Services
                 .Include(a => a.AdvertReaction)
                 .ToListAsync();
 
-            switch (sortOrder)
-            {
-                case AdvertSortOrder.CreationDateAsc:
-                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
-                    break;
-                case AdvertSortOrder.CreationDateDesc:
-                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
-                    break;
-                case AdvertSortOrder.RatingAsc:
-                    adverts = adverts.OrderBy(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
-                    break;
-                case AdvertSortOrder.RatingDesc:
-                    adverts = adverts.OrderByDescending(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
-                    break;
-                default:
-                    break;
-            }
-
             var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+
             return advertsDto;
         }
-        public async Task<List<AdvertDto>> SearchAdverts(string searchText, AdvertSortOrder sortOrder)
+        public async Task<List<AdvertDto>> SearchAdverts(string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
 
             var adverts = await _dbContext.Adverts
@@ -120,25 +102,9 @@ namespace Services
                 .Where(a => a.Text.Contains(searchText) && !a.IsDraft)
                 .ToListAsync();
 
-            switch (sortOrder)
-            {
-                case AdvertSortOrder.CreationDateAsc:
-                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
-                    break;
-                case AdvertSortOrder.CreationDateDesc:
-                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
-                    break;
-                case AdvertSortOrder.RatingAsc:
-                    adverts = adverts.OrderBy(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
-                    break;
-                case AdvertSortOrder.RatingDesc:
-                    adverts = adverts.OrderByDescending(a => a.AdvertReaction.Sum(r => (int)r.Reaction)).ToList();
-                    break;
-                default:
-                    break;
-            }
-
             var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+
+            advertsDto = SortAdverts(advertsDto, sortOrder, startDate, endDate);
 
             return advertsDto;
         }
@@ -196,7 +162,7 @@ namespace Services
                 advert.IsDraft = isDraft;
             }
 
-            advert.ExpirationDate = DateTime.Now.AddDays(_configuration.GetValue<int>("Appsettings:ExpirationDate"));
+            advert.ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate);
 
             if (advert.AdvertImages != null)
             {
@@ -245,12 +211,31 @@ namespace Services
             }
             await _dbContext.SaveChangesAsync();
         }
-        public enum AdvertSortOrder
+        private List<AdvertDto> SortAdverts(List<AdvertDto> adverts, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-            CreationDateAsc,
-            CreationDateDesc,
-            RatingAsc,
-            RatingDesc
+            adverts = adverts.Where(a =>
+            (!startDate.HasValue || a.TimeCreated >= startDate.Value)
+            && (!endDate.HasValue || a.TimeCreated <= endDate.Value))
+            .ToList();
+
+            switch (sortOrder)
+            {
+                case AdvertSortOrder.CreationDateAsc:
+                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.CreationDateDesc:
+                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
+                    break;
+                case AdvertSortOrder.RatingAsc:
+                    adverts = adverts.OrderBy(a => a.Reactions.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                case AdvertSortOrder.RatingDesc:
+                    adverts = adverts.OrderByDescending(a => a.Reactions.Sum(r => (int)r.Reaction)).ToList();
+                    break;
+                default:
+                    break;
+            }
+            return adverts;
         }
     }
 }

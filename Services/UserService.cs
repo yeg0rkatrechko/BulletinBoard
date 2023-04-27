@@ -1,19 +1,28 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Models;
+using Models.DbModels;
+using Models.Dto;
 
 namespace Services
 {
-    public class UserService
+    public class UserService : IUserService
     {
         private readonly BulletinBoardDbContext _dbContext;
-        public UserService(BulletinBoardDbContext dbContext)
+        private readonly IMapper _mapper;
+        public UserService(BulletinBoardDbContext dbContext, IMapper mapper)
         {
             _dbContext = dbContext;
+            _mapper = mapper;
         }
         public async Task CreateUser(string name, bool isAdmin)
         {
+            var userExists = await _dbContext.Users.AnyAsync(u => u.Name == name);
+            if (userExists)
+            {
+                throw new Exception("Пользователь с таким именем уже существует");
+            }
+
             var user = new User
             {
                 Id = Guid.NewGuid(),
@@ -34,5 +43,34 @@ namespace Services
             }
             userToChange.Admin = isAdmin;
         }
+
+        public async Task<List<AdvertDto>> GetAdsByUser(Guid requestingUserId, Guid targetUserId)
+        {
+            var user = await _dbContext.Users
+                .Include(u => u.Adverts)
+                .SingleOrDefaultAsync(u => u.Id == targetUserId);
+
+            if (user == null)
+            {
+                throw new Exception("Пользователь не найден");
+            }
+
+            if (requestingUserId != targetUserId && !user.Adverts.Any(a => !a.IsDraft))
+            {
+                return new List<AdvertDto>();
+            }
+
+            var adverts = user.Adverts.ToList();
+
+            if (requestingUserId != targetUserId)
+            {
+                adverts = adverts.Where(a => !a.IsDraft).ToList();
+            }
+
+            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+
+            return advertsDto;
+        }
+
     }
 }
