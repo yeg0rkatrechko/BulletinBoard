@@ -25,8 +25,15 @@ namespace BulletinBoard.Controllers
         [HttpPut]
         public async Task<IActionResult> ChangeUserPrivilege(Guid adminId, Guid userToChangeId, bool isAdmin)
         {
-            _userService.ChangeUserPrivilege(adminId, userToChangeId, isAdmin);
+            await _userService.ChangeUserPrivilege(adminId, userToChangeId, isAdmin);
             return NoContent();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetAdsByUser(Guid requestingUserId, Guid targetUserId)
+        {
+            var response = await _userService.GetAdsByUser(requestingUserId, targetUserId);
+            return Ok(response);
         }
 
     }
