@@ -1,8 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Models
+namespace Models.DbModels
 {
+    [Index(nameof(UserId))]
     public class Advert
     {
         [Key]
@@ -17,8 +19,11 @@ namespace Models
 
         public DateTime ExpirationDate { get; set; }
 
+        public Guid UserId { get; set; }
+
         [ForeignKey("UserId")]
         public User User { get; set; }
+
         public virtual ICollection<AdvertImage>? AdvertImages { get; set; }
         public virtual ICollection<AdvertReaction>? AdvertReaction { get; set; } = null;
     }

@@ -48,7 +48,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Adverts");
+                    b.ToTable("Adverts", (string)null);
                 });
 
             modelBuilder.Entity("Models.AdvertImage", b =>
@@ -76,7 +76,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasIndex("AdvertId");
 
-                    b.ToTable("AdvertImages");
+                    b.ToTable("AdvertImages", (string)null);
                 });
 
             modelBuilder.Entity("Models.AdvertReaction", b =>
@@ -98,7 +98,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasIndex("AdvertId");
 
-                    b.ToTable("AdvertReactions");
+                    b.ToTable("AdvertReactions", (string)null);
                 });
 
             modelBuilder.Entity("Models.User", b =>
@@ -116,7 +116,7 @@ namespace BulletinBoard.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("Models.Advert", b =>
