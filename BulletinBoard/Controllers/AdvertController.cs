@@ -17,7 +17,7 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, CreateAdvertRequest createAdvertRequest, [FromForm] List<IFormFile> images, bool isDraft)
+        public async Task<IActionResult> CreateAdvert(Guid userId, [FromForm] CreateAdvertRequest createAdvertRequest, [FromForm] List<IFormFile> images, bool isDraft)
         {
             await _advertService.CreateAdvert(userId, createAdvertRequest.Text, images, isDraft);
             return NoContent();
@@ -52,9 +52,9 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, string? text, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
+        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, [FromForm] CreateAdvertRequest? createAdvertRequest, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
         {
-            await _advertService.UpdateAdvert(advertId, userId, text, isDraft, newImages, imagesToDelete);
+            await _advertService.UpdateAdvert(advertId, userId, createAdvertRequest.Text, isDraft, newImages, imagesToDelete);
             return NoContent();
         }
 
