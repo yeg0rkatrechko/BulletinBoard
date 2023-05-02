@@ -24,7 +24,7 @@ namespace Services
 
             using (var fileStream = new FileStream(filePath, FileMode.Create))
             {
-                file.CopyTo(fileStream);
+                await file.CopyToAsync(fileStream);
             }
 
             return filePath;
@@ -33,7 +33,7 @@ namespace Services
         {
             if (File.Exists(imagePath))
             {
-                File.Delete(imagePath);
+                await Task.Run(() => File.Delete(imagePath));
             }
         }
     }
