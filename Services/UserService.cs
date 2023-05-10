@@ -1,8 +1,8 @@
 ﻿using AutoMapper;
+using Dal;
+using Domain;
 using Microsoft.EntityFrameworkCore;
-using Models;
-using Models.DbModels;
-using Models.Dto;
+using Services.Models;
 
 namespace Services
 {

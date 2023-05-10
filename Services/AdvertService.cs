@@ -1,10 +1,11 @@
 ﻿using AutoMapper;
+using Dal;
+using Domain;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using Models;
-using Models.DbModels;
 using Models.Dto;
+using Services.Models;
 using Services.Options;
 
 namespace Services
@@ -22,7 +23,7 @@ namespace Services
             _options = options.Value;
             _imageService = imageService;
         }
-        public async Task<Guid> CreateAdvert(Guid userId, string text, List<IFormFile> images, bool isDraft)
+        public async Task<Guid> CreateAdvert(Guid userId, string text, string heading, List<IFormFile> images, bool isDraft)
         {
             var user = await _dbContext.Users.FindAsync(userId);
 
@@ -40,6 +41,7 @@ namespace Services
                 Id = Guid.NewGuid(),
                 User = user,
                 Text = text,
+                Heading = heading,
                 IsDraft = isDraft,
                 TimeCreated = DateTime.UtcNow,
                 ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate),
@@ -94,7 +96,7 @@ namespace Services
         }
         public async Task<List<AdvertDto>> SearchAdverts(string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-
+            // todo варианты поиска : searchText null не null
             var adverts = await _dbContext.Adverts
                 .Include(a => a.User)
                 .Include(a => a.AdvertImages)
@@ -135,7 +137,7 @@ namespace Services
                 foreach (var image in advert.AdvertImages)
                 {
                     _dbContext.AdvertImages.Remove(image);
-                    _imageService.DeleteImage(image.FilePath);
+                    await _imageService.DeleteImage(image.FilePath);
                 }
             }
             _dbContext.Adverts.Remove(advert);
@@ -172,7 +174,7 @@ namespace Services
                     if (advertImage != null)
                     {
                         _dbContext.AdvertImages.Remove(advertImage);
-                        _imageService.DeleteImage(advertImage.FilePath);
+                        await _imageService.DeleteImage(advertImage.FilePath);
                     }
                 }
             }
@@ -192,12 +194,12 @@ namespace Services
 
             await _dbContext.SaveChangesAsync();
         }
-        public async Task ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
+        public async Task ReactToAdvert(Guid userId, Guid advertId, bool isLike)
         {
             var existingReaction = await _dbContext.AdvertReactions.FirstOrDefaultAsync(r => r.UserId == userId && r.AdvertId == advertId);
             if (existingReaction != null)
             {
-                existingReaction.Reaction = reaction;
+                existingReaction.IsLike = isLike;
             }
             else
             {
@@ -205,7 +207,7 @@ namespace Services
                 {
                     UserId = userId,
                     AdvertId = advertId,
-                    Reaction = reaction
+                    IsLike = isLike
                 };
                 _dbContext.AdvertReactions.Add(newReaction);
             }
@@ -218,6 +220,7 @@ namespace Services
             && (!endDate.HasValue || a.TimeCreated <= endDate.Value))
             .ToList();
 
+            // todo Сделвть нормально
             switch (sortOrder)
             {
                 case AdvertSortOrder.CreationDateAsc:
@@ -226,12 +229,12 @@ namespace Services
                 case AdvertSortOrder.CreationDateDesc:
                     adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
                     break;
-                case AdvertSortOrder.RatingAsc:
-                    adverts = adverts.OrderBy(a => a.Reactions.Sum(r => (int)r.Reaction)).ToList();
-                    break;
-                case AdvertSortOrder.RatingDesc:
-                    adverts = adverts.OrderByDescending(a => a.Reactions.Sum(r => (int)r.Reaction)).ToList();
-                    break;
+                // case AdvertSortOrder.RatingAsc:
+                //     adverts = adverts.OrderBy(a => a.Reactions.Sum(r => (int)r.IsLike)).ToList();
+                //     break;
+                // case AdvertSortOrder.RatingDesc:
+                //     adverts = adverts.OrderByDescending(a => a.Reactions.Sum(r => (int)r.IsLike)).ToList();
+                //     break;
                 default:
                     break;
             }

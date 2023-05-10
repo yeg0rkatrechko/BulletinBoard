@@ -1,8 +1,8 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Domain;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Models.DbModels;
 
-namespace Models
+namespace Dal
 {
     public class BulletinBoardDbContext : DbContext
     {
@@ -12,16 +12,20 @@ namespace Models
             _configuration = configuration;
         }
 
-        public DbSet<Advert> Adverts { get; set; }
-        public DbSet<User> Users { get; set; }
-        public DbSet<AdvertImage> AdvertImages { get; set; }
-        public DbSet<AdvertReaction> AdvertReactions { get; set; }
-        public BulletinBoardDbContext() => Database.EnsureCreated();
+        public DbSet<Advert> Adverts { get; set; } = null!;
+        public DbSet<User> Users { get; set; } = null!;
+        public DbSet<AdvertImage> AdvertImages { get; set; } = null!;
+        public DbSet<AdvertReaction> AdvertReactions { get; set; } = null!;
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
             optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly("BulletinBoard"));
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.ApplyConfigurationsFromAssembly(typeof(BulletinBoardDbContext).Assembly);
         }
     }
 }

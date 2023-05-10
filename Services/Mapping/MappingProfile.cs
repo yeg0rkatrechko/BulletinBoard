@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
-using Models.DbModels;
+using Domain;
 using Models.Dto;
+using Services.Dto;
+using Services.Models;
 
 namespace Services.Mapping
 {

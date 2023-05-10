@@ -1,4 +1,5 @@
 ﻿using Models.Dto;
+using Services.Models;
 
 namespace Services
 {

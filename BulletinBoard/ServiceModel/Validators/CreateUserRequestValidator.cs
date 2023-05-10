@@ -1,7 +1,6 @@
-﻿using BulletinBoard.ServiceModel;
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace Models.Validators
+namespace BulletinBoard.ServiceModel.Validators
 {
     public class CreateUserRequestValidator : AbstractValidator<CreateUserRequest>
     {

@@ -1,8 +1,8 @@
 using BulletinBoard.Common;
+using BulletinBoard.ServiceModel.Validators;
+using Dal;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
-using Models;
-using Models.Validators;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;

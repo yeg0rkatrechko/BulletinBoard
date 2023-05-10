@@ -1,6 +1,5 @@
 ﻿using BulletinBoard.ServiceModel;
 using Microsoft.AspNetCore.Mvc;
-using Models.DbModels;
 using Models.Dto;
 using Services;
 
@@ -19,7 +18,7 @@ namespace BulletinBoard.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateAdvert(Guid userId, [FromForm] CreateAdvertRequest createAdvertRequest, [FromForm] List<IFormFile> images, bool isDraft)
         {
-            await _advertService.CreateAdvert(userId, createAdvertRequest.Text, images, isDraft);
+            await _advertService.CreateAdvert(userId, createAdvertRequest.Text, createAdvertRequest.Heading, images, isDraft);
             return NoContent();
         }
 
@@ -36,7 +35,7 @@ namespace BulletinBoard.Controllers
             var response = await _advertService.GetAllPublishedAdverts();
             return Ok(response);
         }
-
+        
         [HttpGet("adverts/search")]
         public async Task<IActionResult> SearchAdverts(string searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
@@ -54,14 +53,19 @@ namespace BulletinBoard.Controllers
         [HttpPut]
         public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, [FromForm] CreateAdvertRequest? createAdvertRequest, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
         {
+            if (createAdvertRequest == null)
+            {
+                throw new ArgumentNullException(nameof(createAdvertRequest));
+            }
+
             await _advertService.UpdateAdvert(advertId, userId, createAdvertRequest.Text, isDraft, newImages, imagesToDelete);
             return NoContent();
         }
 
         [HttpPut("react")]
-        public async Task<IActionResult> ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
+        public async Task<IActionResult> ReactToAdvert(Guid userId, Guid advertId, bool isLike)
         {
-            await _advertService.ReactToAdvert(userId, advertId, reaction);
+            await _advertService.ReactToAdvert(userId, advertId, isLike);
             return NoContent();
         }
     }

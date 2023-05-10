@@ -1,7 +1,6 @@
-﻿using BulletinBoard.ServiceModel;
-using FluentValidation;
+﻿using FluentValidation;
 
-namespace Models.Validators
+namespace BulletinBoard.ServiceModel.Validators
 {
     public class CreateAdvertRequestValidator : AbstractValidator<CreateAdvertRequest>
     {
@@ -16,6 +15,8 @@ namespace Models.Validators
                 .WithMessage($"Текст должен быть длиннее {minLength} символов")
                 .MaximumLength(maxLength)
                 .WithMessage($"Текст не может быть длиннее {maxLength} символов");
+            
+            // todo validate Heading
         }
     }
 }

@@ -1,10 +1,7 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Models.DbModels
+﻿namespace Domain
 {
     public class User
     {
-        [Key]
         public Guid Id { get; set; }
 
         public string Name { get; set; }

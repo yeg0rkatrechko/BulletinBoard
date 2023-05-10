@@ -1,5 +1,5 @@
 ﻿using Bogus;
-using Models.DbModels;
+using Domain;
 
 namespace Services.Common
 {

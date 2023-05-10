@@ -1,12 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-
-namespace Models.DbModels
+﻿namespace Domain
 {
     public class AdvertImage
     {
-        [Key]
         public Guid Id { get; set; }
 
         public string FileName { get; set; }
@@ -15,7 +10,6 @@ namespace Models.DbModels
 
         public string FilePath { get; set; }
 
-        [ForeignKey("AdvertId")]
         public Advert Advert { get; set; }
     }
 }

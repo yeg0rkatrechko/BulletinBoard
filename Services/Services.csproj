@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="12.0.0" />
     <PackageReference Include="Bogus" Version="34.0.2" />
     <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.5.2" />
@@ -14,7 +15,20 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Models\Models.csproj" />
+    <ProjectReference Include="..\Dal\Dal.csproj" />
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="AdvertService.cs">
+      <DependentUpon>IAdvertService.cs</DependentUpon>
+    </Compile>
+    <Compile Update="UserService.cs">
+      <DependentUpon>IUserService.cs</DependentUpon>
+    </Compile>
+    <Compile Update="ImageService.cs">
+      <DependentUpon>IImageService.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 
 </Project>

@@ -2,6 +2,7 @@
 {
     public class CreateAdvertRequest
     {
-        public string Text { get; set; }
+        public string Text { get; set; } = null!;
+        public string Heading { get; set; } = null!;
     }
 }
