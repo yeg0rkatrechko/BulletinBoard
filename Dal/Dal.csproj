@@ -17,4 +17,23 @@
       <ProjectReference Include="..\Domain\Domain.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="Migrations\" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Compile Remove="Migrations\20230511165606_Added Entity Configuration.cs" />
+      <Compile Remove="Migrations\20230511165606_Added Entity Configuration.Designer.cs" />
+      <Compile Remove="Migrations\BulletinBoardDbContextModelSnapshot.cs" />
+      <Compile Remove="DbModels\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <EmbeddedResource Remove="DbModels\**" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <None Remove="DbModels\**" />
+    </ItemGroup>
+
 </Project>

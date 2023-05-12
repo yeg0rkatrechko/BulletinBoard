@@ -1,4 +1,5 @@
-﻿using Domain;
+﻿using Dal.EntityConfiguration;
+using Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -20,12 +21,15 @@ namespace Dal
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             var connectionString = _configuration.GetConnectionString("DefaultConnection");
-            optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly("BulletinBoard"));
+            optionsBuilder.UseSqlServer(connectionString, b => b.MigrationsAssembly("Dal"));
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.ApplyConfigurationsFromAssembly(typeof(BulletinBoardDbContext).Assembly);
+            modelBuilder.ApplyConfiguration(new AdvertMap());
+            modelBuilder.ApplyConfiguration(new UserConfiguration());
+            modelBuilder.ApplyConfiguration(new AdvertImageMap());
+            modelBuilder.ApplyConfiguration(new AdvertReactionMap());
         }
     }
 }
