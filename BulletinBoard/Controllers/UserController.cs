@@ -1,6 +1,5 @@
 ﻿using BulletinBoard.ServiceModel;
 using Microsoft.AspNetCore.Mvc;
-using Models.Dto;
 using Services;
 
 namespace BulletinBoard.Controllers
@@ -16,7 +15,7 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost("createUser")]
-        public async Task<IActionResult> CreateUser(CreateUserRequest createUserRequest)
+        public async Task<IActionResult> CreateUser([FromForm] CreateUserRequest createUserRequest)
         {
             await _userService.CreateUser(createUserRequest.Name, false);
             return NoContent();

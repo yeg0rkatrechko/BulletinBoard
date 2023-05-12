@@ -14,22 +14,20 @@ namespace Services
 
         public async Task<string> UploadImage(IFormFile file)
         {
-            if (file == null || file.Length == 0)
+            if (file.Length == 0)
             {
-                return null;
+                throw new Exception("Файл пуст");
             }
 
             var fileName = Path.GetFileName(file.FileName);
-            var filePath = Path.Combine(_imageDirectory, Guid.NewGuid().ToString() + "_" + fileName);
+            var filePath = Path.Combine(_imageDirectory, Guid.NewGuid() + "_" + fileName);
 
-            using (var fileStream = new FileStream(filePath, FileMode.Create))
-            {
-                await file.CopyToAsync(fileStream);
-            }
+            await using var fileStream = new FileStream(filePath, FileMode.Create);
+            await file.CopyToAsync(fileStream);
 
             return filePath;
         }
-        public async Task DeleteImage(string imagePath)
+        public async Task DeleteImage(string? imagePath)
         {
             if (File.Exists(imagePath))
             {

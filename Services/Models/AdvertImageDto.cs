@@ -1,11 +1,7 @@
-﻿namespace Models.Dto
+﻿namespace Services.Models
 {
-    // todo Заполнить
     public class AdvertImageDto
     {
-        public AdvertImageDto()
-        {
-
-        }
+        public string FileName { get; set; } = null!;
     }
 }

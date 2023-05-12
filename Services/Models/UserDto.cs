@@ -1,8 +1,7 @@
-﻿namespace Services.Dto
+﻿namespace Services.Models
 {
-    // todo заполнить
     public class UserDto
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
     }
 }

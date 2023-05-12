@@ -23,9 +23,14 @@ namespace Services
             _options = options.Value;
             _imageService = imageService;
         }
-        public async Task<Guid> CreateAdvert(Guid userId, string text, string heading, List<IFormFile> images, bool isDraft)
+        public async Task<Guid> CreateAdvert(Guid userId, string? text, string? heading, List<IFormFile> images, bool isDraft)
         {
             var user = await _dbContext.Users.FindAsync(userId);
+
+            if (user is null)
+            {
+                throw new Exception("Пользователя с данным id не существует");
+            }
 
             int numAdverts = await _dbContext.Adverts.CountAsync(a => a.UserId == user.Id);
 
@@ -56,6 +61,7 @@ namespace Services
                     FileName = image.FileName,
                     FileType = image.ContentType,
                     FilePath = filePath,
+                    AdvertId = newAdvert.Id,
                     Advert = newAdvert
                 };
                 newAdvert.AdvertImages.Add(advertImage);
@@ -68,9 +74,15 @@ namespace Services
         }
         public async Task<AdvertDto> GetAdvertById(Guid advertId, Guid userId)
         {
+            if (await _dbContext.Users.FindAsync(userId) is null)
+            {
+                throw new Exception("Пользователя с данным id не существует");
+            }
+            
             var advert = await _dbContext.Adverts
                 .Include(a => a.AdvertImages)
                 .Include(a => a.User)
+                .Include(a => a.AdvertReaction)
                 .FirstOrDefaultAsync(a => a.Id == advertId);
 
             if (advert == null || (advert.IsDraft && advert.User.Id != userId))
@@ -82,34 +94,65 @@ namespace Services
 
             return advertDto;
         }
-        public async Task<IList<AdvertDto>> GetAllPublishedAdverts()
+        public async Task<List<AdvertDto>> GetPublishedAdverts(int pageNumber, int pageSize)
         {
             var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
+                .Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .Include(a => a.User)
                 .Include(a => a.AdvertImages)
                 .Include(a => a.AdvertReaction)
                 .ToListAsync();
-
+            
             var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
 
             return advertsDto;
         }
-        public async Task<List<AdvertDto>> SearchAdverts(string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
+        public async Task<List<AdvertDto>> SearchAdverts(int pageNumber, int pageSize, string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-            // todo варианты поиска : searchText null не null
-            var adverts = await _dbContext.Adverts
-                .Include(a => a.User)
+            var query = _dbContext.Adverts.Include(a => a.User)
                 .Include(a => a.AdvertImages)
                 .Include(a => a.AdvertReaction)
-                .Where(a => a.Text.Contains(searchText) && !a.IsDraft)
+                .Where(a => !a.IsDraft);
+
+            if (!string.IsNullOrWhiteSpace(searchText))
+            {
+                query = query.Where(a => a.Heading.Contains(searchText) || a.Text.Contains(searchText));
+            }
+
+            if (startDate.HasValue)
+            {
+                query = query.Where(a => a.TimeCreated >= startDate.Value);
+            }
+
+            if (endDate.HasValue)
+            {
+                query = query.Where(a => a.TimeCreated <= endDate.Value);
+            }
+
+            switch (sortOrder)
+            {
+                case AdvertSortOrder.CreationDateAsc:
+                    query = query.OrderBy(a => a.TimeCreated);
+                    break;
+                case AdvertSortOrder.CreationDateDesc:
+                    query = query.OrderByDescending(a => a.TimeCreated);
+                    break;
+                case AdvertSortOrder.RatingAsc:
+                    query = query.OrderBy(a => a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) - a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
+                    break;
+                case AdvertSortOrder.RatingDesc:
+                    query = query.OrderByDescending(a => a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) - a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
+                    break;
+            }
+
+            var sortedAdverts = await query.Skip((pageNumber - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync();
 
-            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
-
-            advertsDto = SortAdverts(advertsDto, sortOrder, startDate, endDate);
-
-            return advertsDto;
+            return _mapper.Map<List<AdvertDto>>(sortedAdverts);
         }
+
         public async Task DeleteAdvert(Guid advertId, Guid userId)
         {
             var advert = await _dbContext.Adverts
@@ -143,7 +186,7 @@ namespace Services
             _dbContext.Adverts.Remove(advert);
             await _dbContext.SaveChangesAsync();
         }
-        public async Task UpdateAdvert(Guid advertId, Guid userId, string text, bool isDraft, List<IFormFile> newImages, List<Guid> imagesToDelete)
+        public async Task UpdateAdvert(Guid advertId, Guid userId, string? text, string? heading, bool isDraft, List<IFormFile>? newImages, List<Guid>? imagesToDelete)
         {
             var advert = await _dbContext.Adverts.Include(a => a.AdvertImages).FirstOrDefaultAsync(a => a.Id == advertId);
 
@@ -151,14 +194,22 @@ namespace Services
             {
                 throw new Exception("Объявление не найдено");
             }
+
             if (advert.User.Id != userId)
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
+            
             if (text != null)
             {
                 advert.Text = text;
             }
+            
+            if (heading != null)
+            {
+                advert.Heading = heading;
+            }
+            
             if (advert.IsDraft)
             {
                 advert.IsDraft = isDraft;
@@ -166,7 +217,7 @@ namespace Services
 
             advert.ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate);
 
-            if (advert.AdvertImages != null)
+            if (advert.AdvertImages != null && imagesToDelete != null)
             {
                 foreach (var imageToDeleteId in imagesToDelete)
                 {
@@ -178,28 +229,30 @@ namespace Services
                     }
                 }
             }
-
-            foreach (var newImage in newImages)
-            {
-                var filePath = await _imageService.UploadImage(newImage);
-                var advertImage = new AdvertImage
+            
+            if (newImages != null)
+                foreach (var newImage in newImages)
                 {
-                    FileName = newImage.FileName,
-                    FileType = newImage.ContentType,
-                    FilePath = filePath,
-                    Advert = advert
-                };
-                advert.AdvertImages.Add(advertImage);
-            }
+                    var filePath = await _imageService.UploadImage(newImage);
+                    var advertImage = new AdvertImage
+                    {
+                        FileName = newImage.FileName,
+                        FileType = newImage.ContentType,
+                        FilePath = filePath,
+                        AdvertId = advertId,
+                        Advert = advert
+                    };
+                    advert.AdvertImages?.Add(advertImage);
+                }
 
             await _dbContext.SaveChangesAsync();
         }
-        public async Task ReactToAdvert(Guid userId, Guid advertId, bool isLike)
+        public async Task ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
         {
             var existingReaction = await _dbContext.AdvertReactions.FirstOrDefaultAsync(r => r.UserId == userId && r.AdvertId == advertId);
             if (existingReaction != null)
             {
-                existingReaction.IsLike = isLike;
+                existingReaction.Reaction = reaction;
             }
             else
             {
@@ -207,38 +260,11 @@ namespace Services
                 {
                     UserId = userId,
                     AdvertId = advertId,
-                    IsLike = isLike
+                    Reaction = reaction
                 };
                 _dbContext.AdvertReactions.Add(newReaction);
             }
             await _dbContext.SaveChangesAsync();
-        }
-        private List<AdvertDto> SortAdverts(List<AdvertDto> adverts, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
-        {
-            adverts = adverts.Where(a =>
-            (!startDate.HasValue || a.TimeCreated >= startDate.Value)
-            && (!endDate.HasValue || a.TimeCreated <= endDate.Value))
-            .ToList();
-
-            // todo Сделвть нормально
-            switch (sortOrder)
-            {
-                case AdvertSortOrder.CreationDateAsc:
-                    adverts = adverts.OrderBy(a => a.TimeCreated).ToList();
-                    break;
-                case AdvertSortOrder.CreationDateDesc:
-                    adverts = adverts.OrderByDescending(a => a.TimeCreated).ToList();
-                    break;
-                // case AdvertSortOrder.RatingAsc:
-                //     adverts = adverts.OrderBy(a => a.Reactions.Sum(r => (int)r.IsLike)).ToList();
-                //     break;
-                // case AdvertSortOrder.RatingDesc:
-                //     adverts = adverts.OrderByDescending(a => a.Reactions.Sum(r => (int)r.IsLike)).ToList();
-                //     break;
-                default:
-                    break;
-            }
-            return adverts;
         }
     }
 }

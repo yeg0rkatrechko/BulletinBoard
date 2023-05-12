@@ -44,7 +44,7 @@ namespace Services
             userToChange.Admin = isAdmin;
         }
 
-        public async Task<List<AdvertDto>> GetAdsByUser(Guid requestingUserId, Guid targetUserId)
+        public async Task<List<AdvertDto>?> GetAdsByUser(Guid requestingUserId, Guid targetUserId)
         {
             var user = await _dbContext.Users
                 .Include(u => u.Adverts)
@@ -55,9 +55,14 @@ namespace Services
                 throw new Exception("Пользователь не найден");
             }
 
-            if (requestingUserId != targetUserId && !user.Adverts.Any(a => !a.IsDraft))
+            if (user.Adverts == null)
             {
-                return new List<AdvertDto>();
+                return null;
+            }
+
+            if (requestingUserId != targetUserId && user.Adverts.All(a => a.IsDraft))
+            {
+                return null;
             }
 
             var adverts = user.Adverts.ToList();
@@ -67,9 +72,7 @@ namespace Services
                 adverts = adverts.Where(a => !a.IsDraft).ToList();
             }
 
-            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
-
-            return advertsDto;
+            return _mapper.Map<List<AdvertDto>>(adverts);
         }
 
     }

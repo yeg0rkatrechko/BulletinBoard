@@ -1,4 +1,5 @@
 ﻿using BulletinBoard.ServiceModel;
+using Domain;
 using Microsoft.AspNetCore.Mvc;
 using Models.Dto;
 using Services;
@@ -22,7 +23,7 @@ namespace BulletinBoard.Controllers
             return NoContent();
         }
 
-        [HttpGet("{advertId}")]
+        [HttpGet("{advertId:guid}")]
         public async Task<IActionResult> GetAdvertById(Guid advertId, Guid userId)
         {
             var response = await _advertService.GetAdvertById(advertId, userId);
@@ -30,16 +31,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpGet("adverts")]
-        public async Task<IActionResult> GetAllPublishedAdverts()
+        public async Task<IActionResult> GetPublishedAdverts(int pageNumber, int pageSize)
         {
-            var response = await _advertService.GetAllPublishedAdverts();
+            var response = await _advertService.GetPublishedAdverts(pageNumber, pageSize);
             return Ok(response);
         }
         
         [HttpGet("adverts/search")]
-        public async Task<IActionResult> SearchAdverts(string searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
+        public async Task<IActionResult> SearchAdverts(int pageNumber, int pageSize, string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-            var response = await _advertService.SearchAdverts(searchText, sortOrder, startDate, endDate);
+            var response = await _advertService.SearchAdverts(pageNumber, pageSize, searchText, sortOrder, startDate, endDate);
             return Ok(response);
         }
 
@@ -51,21 +52,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPut]
-        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, [FromForm] CreateAdvertRequest? createAdvertRequest, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
+        public async Task<IActionResult> UpdateAdvert(Guid advertId, Guid userId, [FromForm] CreateAdvertRequest? updateAdvertRequest, bool isDraft, [FromForm] List<IFormFile> newImages, [FromForm] List<Guid> imagesToDelete)
         {
-            if (createAdvertRequest == null)
-            {
-                throw new ArgumentNullException(nameof(createAdvertRequest));
-            }
-
-            await _advertService.UpdateAdvert(advertId, userId, createAdvertRequest.Text, isDraft, newImages, imagesToDelete);
+            await _advertService.UpdateAdvert(advertId, userId, updateAdvertRequest.Text, updateAdvertRequest.Heading, isDraft, newImages, imagesToDelete);
             return NoContent();
         }
 
         [HttpPut("react")]
-        public async Task<IActionResult> ReactToAdvert(Guid userId, Guid advertId, bool isLike)
+        public async Task<IActionResult> ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
         {
-            await _advertService.ReactToAdvert(userId, advertId, isLike);
+            await _advertService.ReactToAdvert(userId, advertId, reaction);
             return NoContent();
         }
     }
