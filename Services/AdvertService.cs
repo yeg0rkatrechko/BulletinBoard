@@ -117,7 +117,7 @@ namespace Services
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
-                query = query.Where(a => a.Heading.Contains(searchText) || a.Text.Contains(searchText));
+                query = query.Where(a => a.Heading!.Contains(searchText) || a.Text!.Contains(searchText));
             }
 
             if (startDate.HasValue)
@@ -188,7 +188,10 @@ namespace Services
         }
         public async Task UpdateAdvert(Guid advertId, Guid userId, string? text, string? heading, bool isDraft, List<IFormFile>? newImages, List<Guid>? imagesToDelete)
         {
-            var advert = await _dbContext.Adverts.Include(a => a.AdvertImages).FirstOrDefaultAsync(a => a.Id == advertId);
+            var advert = await _dbContext.Adverts
+                .Include(a => a.AdvertImages)
+                .Include(a => a.User)
+                .FirstOrDefaultAsync(a => a.Id == advertId);
 
             if (advert == null)
             {
