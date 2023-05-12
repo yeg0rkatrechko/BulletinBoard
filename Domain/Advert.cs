@@ -4,13 +4,10 @@
     {
         public Guid Id { get; set; }
 
-        public string Text { get; set; } = null!;
+        public string? Text { get; set; } = null!;
         
-        // todo index in entity type configuration
-        // todo поиск по нему в сервисе
-        public string Heading { get; set; } = null!;
-
-        // todo index in entity type configuration
+        public string? Heading { get; set; } = null!;
+        
         public bool IsDraft { get; set; }
 
         public DateTime TimeCreated { get; set; }
@@ -19,7 +16,7 @@
 
         public Guid UserId { get; set; }
 
-        public User? User { get; set; }
+        public User User { get; set; } = null!;
 
         public ICollection<AdvertImage>? AdvertImages { get; set; }
         public ICollection<AdvertReaction>? AdvertReaction { get; set; } = null;
