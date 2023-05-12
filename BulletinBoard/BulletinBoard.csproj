@@ -30,4 +30,23 @@
     <ProjectReference Include="..\Services\Services.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Compile Remove="Options\**" />
+    <Compile Remove="Controllers\AuthenticationController.cs" />
+    <Compile Remove="ServiceModel\UpdateAdvertRequest.cs" />
+    <Compile Remove="ServiceModel\Validators\UpdateAdvertRequestValidator.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="Options\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Options\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Options\**" />
+  </ItemGroup>
+
 </Project>

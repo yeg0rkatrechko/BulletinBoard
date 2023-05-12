@@ -35,6 +35,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddSwaggerGenNewtonsoftSupport();
 builder.Services.Configure<AdvertOptions>(builder.Configuration.GetSection(AdvertOptions.Options));
+builder.Services.Configure<TextOptions>(builder.Configuration.GetSection(TextOptions.Options));
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<IImageService, ImageService>();

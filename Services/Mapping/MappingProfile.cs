@@ -1,7 +1,5 @@
 ﻿using AutoMapper;
 using Domain;
-using Models.Dto;
-using Services.Dto;
 using Services.Models;
 
 namespace Services.Mapping
@@ -11,9 +9,11 @@ namespace Services.Mapping
         public MappingProfile()
         {
             CreateMap<Advert, AdvertDto>()
-            .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.Name))
-            .ForMember(dest => dest.Reactions, opt => opt.MapFrom(src => src.AdvertReaction));
+                .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.User.Name))
+                .ForMember(dest => dest.ReactionSum, opt => opt.MapFrom(src => src.AdvertReaction != null ? src.AdvertReaction.Sum(r => (int)r.Reaction) : 0))
+                .ForMember(dest => dest.AdvertImages, opt => opt.MapFrom(src => src.AdvertImages != null ? src.AdvertImages.Select(image => image.FilePath).ToList() : null));
             CreateMap<User, UserDto>();
+            CreateMap<AdvertImage, AdvertImageDto>();
         }
     }
 }
