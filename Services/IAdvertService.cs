@@ -8,9 +8,9 @@ namespace Services
     public interface IAdvertService
     {
         Task<Guid> CreateAdvert(Guid userId, string? text, string? heading, List<IFormFile> images, bool isDraft);
-        Task<AdvertDto> GetAdvertById(Guid advertId, Guid userId);
-        Task<List<AdvertDto>> GetPublishedAdverts(int pageNumber, int pageSize);
-        Task<List<AdvertDto>> SearchAdverts(int pageNumber, int pageSize, string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate);
+        Task<AdvertDto> GetAdvertById(Guid advertId, Guid? userId);
+        Task<List<AdvertDto>?> GetPublishedAdverts(int pageNumber, int pageSize);
+        Task<List<AdvertDto>?> SearchAdverts(int pageNumber, int pageSize, string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate);
         Task DeleteAdvert(Guid advertId, Guid userId);
         Task UpdateAdvert(Guid advertId, Guid userId, string? text, string? heading, bool isDraft, List<IFormFile> newImages, List<Guid> imagesToDelete);
         Task ReactToAdvert(Guid userId, Guid advertId, Reaction reaction);

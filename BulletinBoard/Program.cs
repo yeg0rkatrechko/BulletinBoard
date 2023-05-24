@@ -1,12 +1,14 @@
 using BulletinBoard.Common;
 using BulletinBoard.ServiceModel.Validators;
 using Dal;
+using Dal.Repositories;
 using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Serialization;
 using Services;
+using Services.DataContract;
 using Services.Mapping;
 using Services.Options;
 
@@ -39,6 +41,10 @@ builder.Services.Configure<TextOptions>(builder.Configuration.GetSection(TextOpt
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAdvertService, AdvertService>();
 builder.Services.AddScoped<IImageService, ImageService>();
+builder.Services.AddScoped<IAdvertRepository, AdvertRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IReactionRepository, ReactionRepository>();
+builder.Services.AddScoped<IImageRepository, ImageRepository>();
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddDbContext<BulletinBoardDbContext>(
         options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));

@@ -1,24 +1,24 @@
 ﻿using AutoMapper;
-using Dal;
 using Domain;
-using Microsoft.EntityFrameworkCore;
+using Services.DataContract;
 using Services.Models;
 
 namespace Services
 {
     public class UserService : IUserService
     {
-        private readonly BulletinBoardDbContext _dbContext;
+        private readonly IUserRepository _userRepository;
         private readonly IMapper _mapper;
-        public UserService(BulletinBoardDbContext dbContext, IMapper mapper)
+        public UserService(IUserRepository userRepository, IMapper mapper)
         {
-            _dbContext = dbContext;
+            _userRepository = userRepository;
             _mapper = mapper;
         }
         public async Task CreateUser(string name, bool isAdmin)
         {
-            var userExists = await _dbContext.Users.AnyAsync(u => u.Name == name);
-            if (userExists)
+            var userExists = await _userRepository.GetUserByName(name);
+            
+            if (userExists!.Any())
             {
                 throw new Exception("Пользователь с таким именем уже существует");
             }
@@ -29,43 +29,44 @@ namespace Services
                 Name = name,
                 Admin = isAdmin
             };
-
-            _dbContext.Users.Add(user);
-            await _dbContext.SaveChangesAsync();
+            
+            await _userRepository.CreateUser(user);
         }
         public async Task ChangeUserPrivilege(Guid adminId, Guid userToChangeId, bool isAdmin)
         {
-            var admin = await _dbContext.Users.SingleOrDefaultAsync(a => a.Id == adminId);
-            var userToChange = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userToChangeId);
+            var admin = await _userRepository.GetUserById(adminId);
+            var userToChange = await _userRepository.GetUserById(userToChangeId);
             if (admin == null || userToChange == null)
             {
                 throw new Exception("Проверьте введенные ID");
             }
-            userToChange.Admin = isAdmin;
+            var updatedUser = userToChange.FirstOrDefault();
+            
+            updatedUser!.Admin = isAdmin;
+
+            await _userRepository.UpdateUser(updatedUser);
         }
 
         public async Task<List<AdvertDto>?> GetAdsByUser(Guid requestingUserId, Guid targetUserId)
         {
-            var user = await _dbContext.Users
-                .Include(u => u.Adverts)
-                .SingleOrDefaultAsync(u => u.Id == targetUserId);
+            var user = await _userRepository.GetUserById(targetUserId);
 
-            if (user == null)
+            if (user.Any() == false)
             {
                 throw new Exception("Пользователь не найден");
             }
 
-            if (user.Adverts == null)
+            if (user.FirstOrDefault()!.Adverts == null)
             {
                 return null;
             }
 
-            if (requestingUserId != targetUserId && user.Adverts.All(a => a.IsDraft))
+            if (requestingUserId != targetUserId && user.FirstOrDefault()!.Adverts!.All(a => a.IsDraft))
             {
                 return null;
             }
 
-            var adverts = user.Adverts.ToList();
+            var adverts = user.FirstOrDefault()!.Adverts!.ToList();
 
             if (requestingUserId != targetUserId)
             {

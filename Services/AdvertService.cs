@@ -1,10 +1,11 @@
 ﻿using AutoMapper;
-using Dal;
+using AutoMapper.QueryableExtensions;
+using Bogus;
 using Domain;
 using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Models.Dto;
+using Services.DataContract;
 using Services.Models;
 using Services.Options;
 
@@ -12,39 +13,51 @@ namespace Services
 {
     public class AdvertService : IAdvertService
     {
-        private readonly BulletinBoardDbContext _dbContext;
         private readonly IMapper _mapper;
         private readonly IImageService _imageService;
         private readonly AdvertOptions _options;
-        public AdvertService(IMapper mapper, BulletinBoardDbContext dbContext, IOptions<AdvertOptions> options, IImageService imageService)
-        {
-            _mapper = mapper;
-            _dbContext = dbContext;
-            _options = options.Value;
-            _imageService = imageService;
-        }
-        public async Task<Guid> CreateAdvert(Guid userId, string? text, string? heading, List<IFormFile> images, bool isDraft)
-        {
-            var user = await _dbContext.Users.FindAsync(userId);
+        private readonly IAdvertRepository _advertRepository;
+        private readonly IUserRepository _userRepository;
+        private readonly IImageRepository _imageRepository;
+        private readonly IReactionRepository _reactionRepository;
 
-            if (user is null)
+        public AdvertService(IMapper mapper, IOptions<AdvertOptions> options, IImageService imageService,
+            IAdvertRepository advertRepository, IUserRepository userRepository, IImageRepository imageRepository,
+            IReactionRepository reactionRepository)
+        {
+            _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
+            _options = options.Value ?? throw new ArgumentNullException(nameof(options));
+            ;
+            _imageService = imageService ?? throw new ArgumentNullException(nameof(imageService));
+            _advertRepository = advertRepository ?? throw new ArgumentNullException(nameof(advertRepository));
+            _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+            _imageRepository = imageRepository ?? throw new ArgumentNullException(nameof(imageRepository));
+            _reactionRepository = reactionRepository ?? throw new ArgumentNullException(nameof(reactionRepository));
+        }
+
+        public async Task<Guid> CreateAdvert(Guid userId, string? text, string? heading, List<IFormFile> images,
+            bool isDraft)
+        {
+            var user = await _userRepository.GetUserById(userId);
+
+            if (user.Any() == false)
             {
                 throw new Exception("Пользователя с данным id не существует");
             }
 
-            int numAdverts = await _dbContext.Adverts.CountAsync(a => a.UserId == user.Id);
+            var adsByUser = _userRepository.GetAdsByUser(userId);
 
-            int maxAdvertsPerUser = _options.MaxAdvertsPerUser;
-
-            if (numAdverts >= maxAdvertsPerUser)
+            if (await _advertRepository.CountUserAdverts(userId) > _options.MaxAdvertsPerUser)
             {
-                throw new Exception($"Максимальное количество объявлений, которые вы можете выложить: {maxAdvertsPerUser}");
+                throw new Exception($"Вы не можете опубликовать более {_options.MaxAdvertsPerUser} объявлений");
             }
+
+            var author = user.FirstOrDefault()!;
 
             var newAdvert = new Advert
             {
                 Id = Guid.NewGuid(),
-                User = user,
+                User = author,
                 Text = text,
                 Heading = heading,
                 IsDraft = isDraft,
@@ -67,53 +80,76 @@ namespace Services
                 newAdvert.AdvertImages.Add(advertImage);
             }
 
-            _dbContext.Adverts.Add(newAdvert);
-            await _dbContext.SaveChangesAsync();
+            await _advertRepository.CreateAdvert(newAdvert);
 
             return newAdvert.Id;
         }
-        public async Task<AdvertDto> GetAdvertById(Guid advertId, Guid userId)
-        {
-            if (await _dbContext.Users.FindAsync(userId) is null)
-            {
-                throw new Exception("Пользователя с данным id не существует");
-            }
-            
-            var advert = await _dbContext.Adverts
-                .Include(a => a.AdvertImages)
-                .Include(a => a.User)
-                .Include(a => a.AdvertReaction)
-                .FirstOrDefaultAsync(a => a.Id == advertId);
 
-            if (advert == null || (advert.IsDraft && advert.User.Id != userId))
+        public async Task<AdvertDto> GetAdvertById(Guid advertId, Guid? userId)
+        {
+            if (userId != null)
+            {
+                if (await _userRepository.GetUserById((Guid)userId) == null)
+                {
+                    throw new Exception("Пользователя с данным id не существует");
+                }
+            }
+            var advert = await _advertRepository.GetAdvertById(advertId);
+
+            if (advert.Any() == false || (advert.FirstOrDefault()!.IsDraft && advert.FirstOrDefault()!.User.Id != userId))
             {
                 throw new Exception("Объявление не найдено");
             }
 
-            var advertDto = _mapper.Map<AdvertDto>(advert);
+            var advertDto = advert.Select(a => new AdvertDto
+            {
+                UserName = a!.User.Name,
+                Heading = a.Heading!,
+                Text = a.Text!,
+                TimeCreated = a.TimeCreated,
+                ExpirationDate = a.ExpirationDate,
+                AdvertImages = a.AdvertImages.Select(image => image.FilePath).ToList(),
+                ReactionSum = a.AdvertReaction.Sum(ar => (int)ar.Reaction)
+            }).FirstOrDefault();
 
-            return advertDto;
+            return advertDto!;
         }
-        public async Task<List<AdvertDto>> GetPublishedAdverts(int pageNumber, int pageSize)
+
+        public async Task<List<AdvertDto>?> GetPublishedAdverts(int pageNumber, int pageSize)
         {
-            var adverts = await _dbContext.Adverts.Where(a => a.IsDraft == false)
+            var adverts = await _advertRepository.GetPublishedAdverts(pageNumber, pageSize);
+            
+            if (adverts.Any() == false)
+            {
+                return null;
+            }
+
+            var advertsDto = adverts
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .Include(a => a.User)
-                .Include(a => a.AdvertImages)
-                .Include(a => a.AdvertReaction)
-                .ToListAsync();
-            
-            var advertsDto = _mapper.Map<List<AdvertDto>>(adverts);
+                .Select(a => new AdvertDto
+                {
+                    UserName = a.User.Name,
+                    Heading = a.Heading!,
+                    Text = a.Text!,
+                    TimeCreated = a.TimeCreated,
+                    ExpirationDate = a.ExpirationDate,
+                    AdvertImages = a.AdvertImages.Select(image => image.FilePath).ToList(),
+                    ReactionSum = a.AdvertReaction.Sum(ar => (int)ar.Reaction)
+                }).ToList();
 
             return advertsDto;
         }
-        public async Task<List<AdvertDto>> SearchAdverts(int pageNumber, int pageSize, string? searchText, AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
+
+        public async Task<List<AdvertDto>?> SearchAdverts(int pageNumber, int pageSize, string? searchText,
+            AdvertSortOrder sortOrder, DateTime? startDate, DateTime? endDate)
         {
-            var query = _dbContext.Adverts.Include(a => a.User)
-                .Include(a => a.AdvertImages)
-                .Include(a => a.AdvertReaction)
-                .Where(a => !a.IsDraft);
+            var query = await _advertRepository.GetPublishedAdverts(pageNumber, pageSize);
+
+            if (query.Any() == false)
+            {
+                return null;
+            }
 
             if (!string.IsNullOrWhiteSpace(searchText))
             {
@@ -139,100 +175,104 @@ namespace Services
                     query = query.OrderByDescending(a => a.TimeCreated);
                     break;
                 case AdvertSortOrder.RatingAsc:
-                    query = query.OrderBy(a => a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) - a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
+                    query = query.OrderBy(a =>
+                        a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) -
+                        a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
                     break;
                 case AdvertSortOrder.RatingDesc:
-                    query = query.OrderByDescending(a => a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) - a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
+                    query = query.OrderByDescending(a =>
+                        a.AdvertReaction.Count(r => r.Reaction == Reaction.Like) -
+                        a.AdvertReaction.Count(r => r.Reaction == Reaction.Dislike));
                     break;
             }
 
-            var sortedAdverts = await query.Skip((pageNumber - 1) * pageSize)
+            var sortedAdverts = query
+                .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .Select(a => new AdvertDto
+                {
+                    UserName = a.User.Name,
+                    Heading = a.Heading!,
+                    Text = a.Text!,
+                    TimeCreated = a.TimeCreated,
+                    ExpirationDate = a.ExpirationDate,
+                    AdvertImages = a.AdvertImages.Select(image => image.FilePath).ToList(),
+                    ReactionSum = a.AdvertReaction.Sum(ar => (int)ar.Reaction)
+                }).ToList();
 
-            return _mapper.Map<List<AdvertDto>>(sortedAdverts);
+            return sortedAdverts;
         }
 
         public async Task DeleteAdvert(Guid advertId, Guid userId)
         {
-            var advert = await _dbContext.Adverts
-            .Include(a => a.User)
-            .Include(a => a.AdvertImages)
-            .SingleOrDefaultAsync(a => a.Id == advertId);
+            var advert = await _advertRepository.GetAdvertById(advertId);
 
-            var user = await _dbContext.Users
-            .SingleOrDefaultAsync(u => u.Id == userId);
+            var user = await _userRepository.GetUserById(userId);
 
-            if (advert == null || (advert.IsDraft && advert.User.Id != userId))
+            if (advert.Any() == false || (advert.FirstOrDefault()!.IsDraft && advert.FirstOrDefault()!.User.Id != userId))
             {
                 throw new Exception("Объявление не найдено");
             }
-            if (user == null)
+
+            if (user.Any() == false)
             {
                 throw new Exception("Пользователь не найден");
             }
-            if (!user.Admin && advert.User.Id != userId)
+
+            if (user.FirstOrDefault()!.Admin && advert.FirstOrDefault()!.User.Id != userId)
             {
                 throw new Exception("У вас нет прав удалять данное объявление");
             }
-            if (advert.AdvertImages != null)
-            {
-                foreach (var image in advert.AdvertImages)
-                {
-                    _dbContext.AdvertImages.Remove(image);
-                    await _imageService.DeleteImage(image.FilePath);
-                }
-            }
-            _dbContext.Adverts.Remove(advert);
-            await _dbContext.SaveChangesAsync();
-        }
-        public async Task UpdateAdvert(Guid advertId, Guid userId, string? text, string? heading, bool isDraft, List<IFormFile>? newImages, List<Guid>? imagesToDelete)
-        {
-            var advert = await _dbContext.Adverts
-                .Include(a => a.AdvertImages)
-                .Include(a => a.User)
-                .FirstOrDefaultAsync(a => a.Id == advertId);
 
-            if (advert == null)
+            await _advertRepository.DeleteAdvert(advert.FirstOrDefault()!);
+        }
+
+        public async Task UpdateAdvert(Guid advertId, Guid userId, string? text, string? heading, bool isDraft,
+            List<IFormFile>? newImages, List<Guid>? imagesToDelete)
+        {
+            var advert = await _advertRepository.GetAdvertById(advertId);
+
+            var advertToUpdate = advert.FirstOrDefault();
+
+            if (advert.Any() == false)
             {
                 throw new Exception("Объявление не найдено");
             }
 
-            if (advert.User.Id != userId)
+            if (advertToUpdate!.User.Id != userId)
             {
                 throw new Exception("У вас нет прав изменять данное объявление");
             }
-            
+
             if (text != null)
             {
-                advert.Text = text;
+                advertToUpdate.Text = text;
             }
-            
+
             if (heading != null)
             {
-                advert.Heading = heading;
+                advertToUpdate.Heading = heading;
             }
-            
-            if (advert.IsDraft)
+
+            if (advertToUpdate.IsDraft)
             {
-                advert.IsDraft = isDraft;
+                advertToUpdate.IsDraft = isDraft;
             }
 
-            advert.ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate);
+            advertToUpdate.ExpirationDate = DateTime.Now.AddDays(_options.ExpirationDate);
 
-            if (advert.AdvertImages != null && imagesToDelete != null)
+            if (advertToUpdate.AdvertImages != null && imagesToDelete != null)
             {
                 foreach (var imageToDeleteId in imagesToDelete)
                 {
-                    var advertImage = advert.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId);
-                    if (advertImage != null)
+                    var advertImagePath = advertToUpdate.AdvertImages.FirstOrDefault(ai => ai.Id == imageToDeleteId)?.FilePath;
+                    if (advertImagePath != null)
                     {
-                        _dbContext.AdvertImages.Remove(advertImage);
-                        await _imageService.DeleteImage(advertImage.FilePath);
+                        await _imageRepository.DeleteImage(advertImagePath);
                     }
                 }
             }
-            
+
             if (newImages != null)
                 foreach (var newImage in newImages)
                 {
@@ -243,19 +283,35 @@ namespace Services
                         FileType = newImage.ContentType,
                         FilePath = filePath,
                         AdvertId = advertId,
-                        Advert = advert
+                        Advert = advertToUpdate
                     };
-                    advert.AdvertImages?.Add(advertImage);
+                    advertToUpdate.AdvertImages?.Add(advertImage);
                 }
 
-            await _dbContext.SaveChangesAsync();
+            await _advertRepository.UpdateAdvert(advertToUpdate);
         }
+
         public async Task ReactToAdvert(Guid userId, Guid advertId, Reaction reaction)
         {
-            var existingReaction = await _dbContext.AdvertReactions.FirstOrDefaultAsync(r => r.UserId == userId && r.AdvertId == advertId);
-            if (existingReaction != null)
+            var advert = await _advertRepository.GetAdvertById(advertId);
+
+            if (advert.Any() == false)
             {
-                existingReaction.Reaction = reaction;
+                throw new Exception("Объявление не найдено");
+            }
+
+            var advertToReact = advert.FirstOrDefault()!;
+
+            if (advertToReact.AdvertReaction != null)
+            {
+                var existingReaction =
+                    advertToReact.AdvertReaction.FirstOrDefault(r => r.UserId == userId);
+                if (existingReaction != null)
+                {
+                    existingReaction.Reaction = reaction;
+                    var updatedReaction = existingReaction;
+                    await _reactionRepository.UpdateReaction(updatedReaction);
+                }
             }
             else
             {
@@ -265,9 +321,8 @@ namespace Services
                     AdvertId = advertId,
                     Reaction = reaction
                 };
-                _dbContext.AdvertReactions.Add(newReaction);
+                await _reactionRepository.CreateReaction(newReaction);
             }
-            await _dbContext.SaveChangesAsync();
         }
     }
 }

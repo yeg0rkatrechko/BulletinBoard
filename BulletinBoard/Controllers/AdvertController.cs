@@ -17,14 +17,16 @@ namespace BulletinBoard.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateAdvert(Guid userId, [FromForm] CreateAdvertRequest createAdvertRequest, [FromForm] List<IFormFile> images, bool isDraft)
+        public async Task<IActionResult> CreateAdvert(Guid userId, [FromForm] CreateAdvertRequest createAdvertRequest,
+            [FromForm] List<IFormFile> images, bool isDraft, CancellationToken cancellationToken)
         {
-            await _advertService.CreateAdvert(userId, createAdvertRequest.Text, createAdvertRequest.Heading, images, isDraft);
+            await _advertService.CreateAdvert(userId, createAdvertRequest.Text, createAdvertRequest.Heading, images,
+                isDraft);
             return NoContent();
         }
 
         [HttpGet("{advertId:guid}")]
-        public async Task<IActionResult> GetAdvertById(Guid advertId, Guid userId)
+        public async Task<IActionResult> GetAdvertById(Guid advertId, Guid? userId)
         {
             var response = await _advertService.GetAdvertById(advertId, userId);
             return Ok(response);
