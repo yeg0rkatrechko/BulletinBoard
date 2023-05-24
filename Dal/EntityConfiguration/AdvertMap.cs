@@ -23,6 +23,8 @@ namespace Dal.EntityConfiguration
         
             entityBuilder.HasIndex(a => a.IsDraft);
 
+            entityBuilder.HasIndex(a => a.TimeCreated);
+            
             entityBuilder.Property(a => a.TimeCreated)
                 .IsRequired();
 
